@@ -191,7 +191,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&l
 function heatColor(v, max){
   if (!v) return 'var(--t0)';
   const p = v / max * 50;
-  return BANDS.find(b => p < b[0])[1];
+  if (p < 40) return BANDS.find(b => p < b[0])[1];
+  const f = Math.min(1, (p - 40) / 20), mix = (x, y) => Math.round(x + (y - x) * f);
+  return `rgb(${mix(214, 142)},${mix(20, 36)},${mix(26, 201)})`;
 }
 function meter(label, w, stale){
   const hi = w && typeof w.p === 'number' && w.p >= 80;
