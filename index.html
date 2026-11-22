@@ -137,7 +137,7 @@ footer code{font-family:inherit;color:var(--dim)}
       <div class="plot" id="plot"></div>
     </section>
     <div class="totals" id="totals" hidden></div>
-    <footer><span>Token: çıktı ve yeni girdi, önbellekten okunan hariç. Dolar: API liste fiyatıyla tahmin.</span><span>together skill · <code>node ~/.claude/together/together.js push</code></span></footer>
+
   </div>
 </div>
 <div class="tip" id="tip"></div>
@@ -197,6 +197,10 @@ const tip = $('#tip');
 function showTip(e, html){ tip.innerHTML = html; tip.classList.add('show'); const x = Math.min(e.clientX+14, innerWidth - tip.offsetWidth - 8); tip.style.left = x+'px'; tip.style.top = (e.clientY+16)+'px'; }
 function hideTip(){ tip.classList.remove('show'); }
 
+function hourModels(p, di, h){
+  const x = (p.hm || []).find(r => r[0] === di && r[1] === h);
+  return x ? Object.entries(x[2]).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ') : '';
+}
 function fav(p){
   const e = Object.entries((p.all && p.all.m) || {}).sort((a, b) => b[1] - a[1])[0];
   return e ? e[0] : p.model;
@@ -249,7 +253,7 @@ function render(people){
     const days = p.days.slice(-7);
     const stale = p.planAt && Date.now() - p.planAt > 6*36e5;
     const sp = sumOf(p, PERIOD);
-    const rows = p.hours.map((r, di) => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${r.map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}"></i>`).join('')}</div>`).join('');
+    const rows = p.hours.map((r, di) => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${r.map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
     html += `<article class="row${i===0?' first':''}">
       <div class="rank">${i+1}</div>
       <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)} · güncellendi ${ago(p.updated)}${fav(p) ? `<br>favori <span class="model">${esc(fav(p))}</span>` : ''}</div></div>
@@ -261,7 +265,7 @@ function render(people){
   });
   board.innerHTML = html;
   board.querySelectorAll('.cells i').forEach(c => {
-    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token`));
+    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${c.dataset.m ? '<br><span>' + c.dataset.m + '</span>' : ''}`));
     c.addEventListener('mouseleave', hideTip);
   });
 
@@ -291,9 +295,11 @@ function render(people){
   $('#chart').hidden = false;
 
   const sumTok = people.reduce((n,p) => n + sumOf(p, PERIOD).tok, 0), sumUsd = people.reduce((n,p) => n + sumOf(p, PERIOD).usd, 0);
-  const hours = Array(24).fill(0); people.forEach(p => p.hours.forEach(r => r.forEach((v,h) => hours[h] += v)));
-  const hot = hours.indexOf(Math.max(...hours));
-  $('#totals').innerHTML = sumTok ? `${perName()}: toplam <b>${fmt(sumTok)} token</b>, API fiyatıyla <b>${usd(sumUsd)}</b>. En yoğun saat <b>${String(hot).padStart(2,'0')}:00</b>.` : `${perName()}: henüz kullanım yok.`;
+  const today = Array(24).fill(0); people.forEach(p => (p.hours[p.hours.length - 1] || []).forEach((v,h) => today[h] += v));
+  const hot = today.indexOf(Math.max(...today));
+  const mm = {}; people.forEach(p => { for (const [k, v] of Object.entries(sumOf(p, PERIOD).m)) mm[k] = (mm[k] || 0) + v; });
+  const ml = Object.entries(mm).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${fmt(v)}`).join(', ');
+  $('#totals').innerHTML = sumTok ? `${perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
   $('#totals').hidden = false;
 }
 
