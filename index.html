@@ -159,7 +159,6 @@ footer code{font-family:inherit;color:var(--dim)}
 </div>
 <div class="tip" id="tip"></div>
 <script>
-const REPO = 'minusorb/kimclaudesikiyor', ISSUE = 1;
 const $ = (s) => document.querySelector(s);
 const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -175,11 +174,6 @@ function keyText(){
   const h = new URLSearchParams(location.hash.slice(1)).get('k');
   if (h) { try{localStorage.setItem('kcs-k',h)}catch{} history.replaceState(null,'',location.pathname); return h; }
   try{return localStorage.getItem('kcs-k')}catch{return null}
-}
-async function unseal(key, blob){
-  const raw = Uint8Array.from(atob(blob), c => c.charCodeAt(0));
-  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: raw.slice(0,12)}, key, raw.slice(12));
-  return JSON.parse(new TextDecoder().decode(pt));
 }
 const fmt = (n) => n >= 1e9 ? (n/1e9).toFixed(n>=1e10?0:1)+'B' : n >= 1e6 ? (n/1e6).toFixed(n>=1e8?0:1)+'M' : n >= 1e3 ? Math.round(n/1e3)+'k' : String(n);
 const usd = (n) => '$' + (n >= 1000 ? Math.round(n).toLocaleString('en-US') : n >= 10 ? Math.round(n) : n.toFixed(2));
@@ -433,45 +427,16 @@ function fail(title, text){
 
 let KEY = null;
 const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-async function comments(){
-  try {
-    const d = await fetch(`data.json?t=${Math.floor(Date.now() / 60000)}`);
-    if (d.ok) { const list = await d.json(); store.set('kcs-c', { list, at: Date.now() }); return { list, ok: true }; }
-  } catch {}
-  const cached = store.get('kcs-c');
-  const headers = { Accept: 'application/vnd.github+json' };
-  if (cached && cached.etag) headers['If-None-Match'] = cached.etag;
-  let r = null;
-  try { r = await fetch(`https://api.github.com/repos/${REPO}/issues/${ISSUE}/comments?per_page=100`, { headers }); } catch {}
-  if (r && r.status === 304 && cached) return { list: cached.list, ok: true };
-  if (r && r.ok) {
-    const list = (await r.json()).map(c => ({ body: c.body }));
-    store.set('kcs-c', { etag: r.headers.get('ETag'), list, at: Date.now() });
-    return { list, ok: true };
-  }
-  return { list: cached ? cached.list : null, ok: false, limited: r && (r.status === 403 || r.status === 429), offline: !r };
-}
-async function people(list){
-  const byId = new Map();
-  let total = 0;
-  for (const c of list) {
-    const m = /^together:v1:([0-9a-f]+):(.+)$/s.exec(c.body || '');
-    if (!m) continue;
-    total++;
-    try { const d = await unseal(KEY, m[2].trim()); if (!d || typeof d !== 'object') continue; if (!byId.has(m[1]) || byId.get(m[1]).updated < d.updated) byId.set(m[1], d); } catch {}
-  }
-  return { list: [...byId.values()], total };
-}
+async function sha(k){ const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k)); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function load(first){
-  const got = await comments();
-  if (!got.list) {
-    if (first) return false;
-    return fail(got.limited ? 'GitHub şimdilik yavaşlattı' : 'Bağlantı yok', got.limited ? 'Saatlik okuma sınırı doldu. Sayfa birkaç dakika içinde kendi kendine tekrar dener.' : 'İnternet bağlantısı gelince sayfa kendi kendine yenilenecek.');
-  }
-  const p = await people(got.list);
-  if (first && p.total && !p.list.length) return 'badkey';
-  render(p.list);
-  return true;
+  let r = null;
+  try { r = await fetch('/api/board', { headers: { 'x-board': KEY }, cache: 'no-store' }); } catch {}
+  if (r && r.status === 401) return 'badkey';
+  if (r && r.ok) { const j = await r.json(); store.set('kcs-c', { list: j.people }); render(j.people); return true; }
+  const c = store.get('kcs-c');
+  if (c && c.list) { render(c.list); return true; }
+  if (first) return false;
+  return fail('Bağlantı yok', 'İnternet bağlantısı gelince sayfa kendi kendine tekrar dener.');
 }
 
 addEventListener('hashchange', () => { if (/k=/.test(location.hash)) location.reload(); });
@@ -479,14 +444,14 @@ addEventListener('hashchange', () => { if (/k=/.test(location.hash)) location.re
   const k = keyText();
   if (!k) return;
   try{
-    KEY = await crypto.subtle.importKey('raw', b64u(k), 'AES-GCM', false, ['decrypt']);
+    KEY = await sha(k);
   }catch{ return; }
   document.title = 'kim claude sikiyor';
   document.body.classList.add('on');
   tabs();
   const res = await load(true);
   if (res === 'badkey') { try{ localStorage.removeItem('kcs-k'); }catch{} document.body.classList.remove('on'); document.title = '​'; return; }
-  if (res === false) fail('GitHub şimdilik yavaşlattı', 'Saatlik okuma sınırı doldu. Sayfa birkaç dakika içinde kendi kendine tekrar dener.');
+  if (res === false) fail('Bağlantı yok', 'İnternet bağlantısı gelince sayfa kendi kendine tekrar dener.');
   setInterval(() => load(false), 300000);
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => LAST && render(LAST), 200); });
 })();
