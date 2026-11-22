@@ -141,7 +141,7 @@ footer code{font-family:inherit;color:var(--dim)}
     <nav class="tabs" id="tabs" aria-label="Dönem"></nav>
     <div class="board" id="board"></div>
     <section class="chart" id="chart" hidden>
-      <div class="ch"><h2>Son 14 gün</h2><div class="legend" id="legend"></div></div>
+      <div class="ch"><h2 id="chartTitle">Son 14 gün</h2><div class="legend" id="legend"></div></div>
       <div class="plot" id="plot"></div>
     </section>
     <div class="totals" id="totals" hidden></div>
@@ -155,6 +155,7 @@ const $ = (s) => document.querySelector(s);
 const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const HEADS = {today:'Bugün, saat saat', yday:'Dün, saat saat', w1:'Son 7 gün, saat saat', w2:'Son 14 gün, gün gün', w3:'Son 21 gün, gün gün', m1:'Son 30 gün, gün gün', all:'Tüm zaman, gün gün'};
+const COLORS = ['#f9a03b','#4fb8ff','#b98cff','#5fd38a','#ff6f91','#ffd84d','#3fd0c9','#ff8a5c'];
 const BANDS = [[2,'#ffffff'],[5,'#b9f3c4'],[10,'#2fc45c'],[20,'#a9d93b'],[30,'#f5e03a'],[40,'#ff9a1f'],[50,'#f2522a'],[Infinity,'#d6141a']];
 const PERIODS = [['today','bugün'],['yday','dün'],['w1','1 hafta'],['w2','2 hafta'],['w3','3 hafta'],['m1','1 ay'],['all','toplam']];
 let PERIOD = (() => { try { return localStorage.getItem('kcs-p') || 'w1'; } catch { return 'w1'; } })();
@@ -323,27 +324,45 @@ function render(people){
     c.addEventListener('mouseleave', hideTip);
   });
 
-  const days = people[0].days.slice(-14).map(d => d.d);
-  const series = people.map((p,i) => ({ name:p.name, color: i === 0 ? '#f9a03b' : ['#b3a6b7','#7d6f83','#5d5163'][Math.min(2, i-1)], v: days.map(d => (p.days.find(x => x.d === d) || {tok:0}).tok) }));
+  const byHour = PERIOD === 'today' || PERIOD === 'yday';
+  let keys, labels, tips;
+  if (byHour) {
+    keys = [...Array(24).keys()];
+    labels = keys.map(h => String(h).padStart(2, '0') + ':00');
+    tips = labels;
+  } else {
+    const [a, b] = PERIOD === 'w1' ? [dAdd(people[0].days.slice(-1)[0].d, -6), people[0].days.slice(-1)[0].d] : [cs, ce];
+    keys = []; for (let d = a; d <= b; d = dAdd(d, 1)) keys.push(d);
+    labels = keys.map(d => `${d.slice(8)}.${d.slice(5,7)}`);
+    tips = keys.map(d => { const t = dUTC(d); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${DAYS[t.getUTCDay()]}`; });
+  }
+  const di = PERIOD === 'today' ? 6 : 5;
+  const order = people.map(p => p.name).sort((a, b) => a.localeCompare(b, 'tr'));
+  const series = people.map(p => {
+    const m = dayMap(p);
+    return { name: p.name, color: COLORS[order.indexOf(p.name) % COLORS.length], v: byHour ? keys.map(h => (p.hours[di] || [])[h] || 0) : keys.map(d => (m[d] || [0])[0]) };
+  });
+  $('#chartTitle').textContent = ({today:'Bugün', yday:'Dün', w1:'Son 7 gün', w2:'Son 14 gün', w3:'Son 21 gün', m1:'Son 30 gün', all:'Tüm zaman'})[PERIOD];
+  const days = keys;
   $('#chart').hidden = false;
   const W = Math.max(300, Math.round($('#plot').clientWidth || 1200)), Hh = W < 600 ? 220 : 300, padL = 46, padB = 30, padT = 10;
   const top = Math.max(1000, ...series.flatMap(s => s.v));
   const step = (W - padL) / (days.length - 1);
   const y = v => padT + (Hh - padT - padB) * (1 - v/top);
   const ticks = [0, .25, .5, .75, 1].map(f => top*f);
-  let svg = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Son 14 gün, günlük token">`;
+  let svg = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Token grafiği">`;
   ticks.forEach(t => svg += `<line x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="rgba(244,237,230,.07)"/><text x="${padL-10}" y="${y(t)+4}" text-anchor="end" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${fmt(Math.round(t))}</text>`);
-  const every = W < 600 ? 4 : 2; days.forEach((d,i) => { if (i%every===0 && (days.length-1-i >= every/2 || i===days.length-1) || i===days.length-1 && (days.length-1)%every >= every/2) svg += `<text x="${padL+i*step}" y="${Hh-8}" text-anchor="middle" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${d.slice(8)}.${d.slice(5,7)}</text>`; });
+  const every = Math.max(1, Math.ceil(days.length / (W < 600 ? 6 : 13))); days.forEach((d,i) => { if ((i%every===0 && days.length-1-i >= every*0.6) || i===days.length-1) svg += `<text x="${padL+i*step}" y="${Hh-8}" text-anchor="middle" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${labels[i]}</text>`; });
   series.slice().reverse().forEach(s => {
     const pts = s.v.map((v,i) => `${padL+i*step},${y(v)}`).join(' ');
     svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    s.v.forEach((v,i) => svg += `<circle cx="${padL+i*step}" cy="${y(v)}" r="9" fill="transparent" data-n="${esc(s.name)}" data-d="${days[i]}" data-v="${v}"/><circle cx="${padL+i*step}" cy="${y(v)}" r="2.6" fill="${s.color}" pointer-events="none"/>`);
+    s.v.forEach((v,i) => svg += `<circle cx="${padL+i*step}" cy="${y(v)}" r="9" fill="transparent" data-n="${esc(s.name)}" data-d="${esc(tips[i])}" data-v="${v}"/>${days.length > 40 ? '' : `<circle cx="${padL+i*step}" cy="${y(v)}" r="2.6" fill="${s.color}" pointer-events="none"/>`}`);
   });
   svg += `</svg>`;
   $('#plot').innerHTML = svg;
   $('#legend').innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
   $('#plot').querySelectorAll('circle[data-n]').forEach(c => {
-    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.n} <span>·</span> ${c.dataset.d.slice(8)}.${c.dataset.d.slice(5,7)} <span>·</span> ${fmt(+c.dataset.v)} token`));
+    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.n} <span>·</span> ${c.dataset.d} <span>·</span> ${fmt(+c.dataset.v)} token`));
     c.addEventListener('mouseleave', hideTip);
   });
   $('#chart').hidden = false;
