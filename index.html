@@ -8,14 +8,14 @@
 <title>&#8203;</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --cold:#07040d; --s1:#0e0816; --s2:#160d21; --line:rgba(244,237,230,.08); --line2:rgba(244,237,230,.14);
   --ink:#f4ede6; --dim:#b3a6b7; --faint:#7d6f83;
   --t0:#1a0b2e; --t1:#3d0f63; --t2:#76197e; --t3:#b8326e; --t4:#ec5e3c; --t5:#f9a03b; --t6:#fde9a6;
-  --display:"Bricolage Grotesque", "Arial Narrow", sans-serif;
-  --body:"Schibsted Grotesk", "Segoe UI", sans-serif;
+  --display:"Host Grotesk", "Segoe UI", sans-serif;
+  --body:"Host Grotesk", "Segoe UI", sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:#000;color:var(--ink)}
@@ -27,7 +27,7 @@ body.on{background:var(--cold)}
 body.on #app{display:block}
 .wrap{max-width:1320px;margin:0 auto;padding:0 clamp(16px,4vw,48px)}
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:clamp(28px,5vw,56px) 0 clamp(20px,3vw,32px);border-bottom:1px solid var(--line)}
-.mark{font:600 clamp(40px,7.4vw,104px)/.86 var(--display);font-variation-settings:"wdth" 76,"opsz" 96;margin:0}
+.mark{font:500 clamp(34px,5.2vw,68px)/1 var(--display);letter-spacing:-.01em;margin:0}
 .mark .hot{color:var(--t5)}
 .lede{max-width:34ch;color:var(--dim);margin:14px 0 0;font-size:16px}
 .live{text-align:right;color:var(--dim);font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -44,10 +44,10 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .head{padding:18px 0 10px;color:var(--faint);font-size:13px;border-bottom:1px solid var(--line)}
 .head span:nth-child(n+4){text-align:right}
 .row{padding:18px 0;border-bottom:1px solid var(--line);position:relative}
-.rank{align-self:start;padding-top:2px;font:600 22px/1 var(--display);font-variation-settings:"wdth" 80;color:var(--faint);font-variant-numeric:tabular-nums}
+.rank{align-self:start;padding-top:2px;font:500 20px/1 var(--display);color:var(--faint);font-variant-numeric:tabular-nums}
 
 .who{min-width:0}
-.name{font:500 22px/1.1 var(--display);font-variation-settings:"wdth" 88;overflow-wrap:anywhere}
+.name{font:500 20px/1.2 var(--display);overflow-wrap:anywhere}
 
 .host{color:var(--dim);font-size:13px;margin-top:4px;overflow-wrap:anywhere}
 .host .model{color:var(--ink)}
@@ -58,7 +58,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .cells i:hover{outline:1px solid var(--ink);outline-offset:1px}
 .hours{grid-column:2;display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums;padding-top:2px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-.big{font:600 30px/1 var(--display);font-variation-settings:"wdth" 78}
+.big{font:500 28px/1 var(--display);letter-spacing:-.01em}
 .row.first .n7 .big{color:var(--t5)}
 .sub{color:var(--dim);font-size:13px;margin-top:5px;font-variant-numeric:normal}
 .meters{display:grid;gap:10px}
@@ -71,7 +71,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 
 section.chart{padding:clamp(40px,6vw,72px) 0 8px}
 .ch{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
-.ch h2{font:500 clamp(26px,3.2vw,40px)/1 var(--display);font-variation-settings:"wdth" 80;margin:0}
+.ch h2{font:500 clamp(22px,2.4vw,30px)/1.1 var(--display);margin:0}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--dim)}
 .legend span{display:inline-flex;align-items:center;gap:8px}
 .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -81,7 +81,7 @@ section.chart{padding:clamp(40px,6vw,72px) 0 8px}
 .tip.show{opacity:1;transform:none}
 .tip span{color:var(--dim)}
 
-.totals{border-top:1px solid var(--line);margin-top:clamp(40px,6vw,64px);padding:24px 0 0;font:400 clamp(20px,2.2vw,28px)/1.35 var(--display);font-variation-settings:"wdth" 88;color:var(--dim);max-width:44ch}
+.totals{border-top:1px solid var(--line);margin-top:clamp(40px,6vw,64px);padding:24px 0 0;font:400 clamp(18px,1.8vw,22px)/1.45 var(--display);color:var(--dim);max-width:44ch}
 .totals b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:13px;padding:22px 0 40px}
 footer code{font-family:inherit;color:var(--dim)}
@@ -111,8 +111,8 @@ footer code{font-family:inherit;color:var(--dim)}
   <div class="wrap">
     <header class="top">
       <div>
-        <h1 class="mark">kim claude<br><span class="hot">sikiyor</span></h1>
-        <p class="lede">Claude'u en çok kim yakıyor. Herkesin bilgisayarı on dakikada bir kendi rakamlarını gönderiyor, sayaç skill'i kurduğun anda sıfırdan başlıyor.</p>
+        <h1 class="mark">kim claude <span class="hot">sikiyor</span></h1>
+        <p class="lede">Kimin ne kadar Claude kullandığı. Rakamlar her bilgisayardan 10 dakikada bir geliyor, sayım kurulumla başlıyor.</p>
       </div>
       <div class="live" id="live"></div>
     </header>
@@ -123,7 +123,7 @@ footer code{font-family:inherit;color:var(--dim)}
       <div class="plot" id="plot"></div>
     </section>
     <div class="totals" id="totals" hidden></div>
-    <footer><span>Rakamlar her makinenin kendi Claude Code kayıtlarından. Token: çıktı + yeni girdi, önbellekten okunan sayılmaz. Dolar: API liste fiyatıyla tahmin.</span><span>together skill · <code>node ~/.claude/together/together.js push</code></span></footer>
+    <footer><span>Token: çıktı ve yeni girdi, önbellekten okunan hariç. Dolar: API liste fiyatıyla tahmin.</span><span>together skill · <code>node ~/.claude/together/together.js push</code></span></footer>
   </div>
 </div>
 <div class="tip" id="tip"></div>
@@ -241,8 +241,8 @@ function render(people){
   const y = v => padT + (Hh - padT - padB) * (1 - v/top);
   const ticks = [0, .25, .5, .75, 1].map(f => top*f);
   let svg = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Son 14 gün, günlük token">`;
-  ticks.forEach(t => svg += `<line x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="rgba(244,237,230,.07)"/><text x="${padL-10}" y="${y(t)+4}" text-anchor="end" fill="#7d6f83" font-size="12" font-family="Schibsted Grotesk">${fmt(Math.round(t))}</text>`);
-  const every = W < 600 ? 4 : 2; days.forEach((d,i) => { if (i%every===0 && (days.length-1-i >= every/2 || i===days.length-1) || i===days.length-1 && (days.length-1)%every >= every/2) svg += `<text x="${padL+i*step}" y="${Hh-8}" text-anchor="middle" fill="#7d6f83" font-size="12" font-family="Schibsted Grotesk">${d.slice(8)}.${d.slice(5,7)}</text>`; });
+  ticks.forEach(t => svg += `<line x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="rgba(244,237,230,.07)"/><text x="${padL-10}" y="${y(t)+4}" text-anchor="end" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${fmt(Math.round(t))}</text>`);
+  const every = W < 600 ? 4 : 2; days.forEach((d,i) => { if (i%every===0 && (days.length-1-i >= every/2 || i===days.length-1) || i===days.length-1 && (days.length-1)%every >= every/2) svg += `<text x="${padL+i*step}" y="${Hh-8}" text-anchor="middle" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${d.slice(8)}.${d.slice(5,7)}</text>`; });
   series.slice().reverse().forEach(s => {
     const pts = s.v.map((v,i) => `${padL+i*step},${y(v)}`).join(' ');
     svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
@@ -260,7 +260,7 @@ function render(people){
   const sumTok = people.reduce((n,p) => n + sumOf(p, PERIOD).tok, 0), sumUsd = people.reduce((n,p) => n + sumOf(p, PERIOD).usd, 0);
   const hours = Array(24).fill(0); people.forEach(p => p.hours.forEach(r => r.forEach((v,h) => hours[h] += v)));
   const hot = hours.indexOf(Math.max(...hours));
-  $('#totals').innerHTML = sumTok ? `Hepimiz ${perName()} içinde <b>${fmt(sumTok)} token</b> yaktık. API fiyatıyla bu <b>${usd(sumUsd)}</b> eder. En çok saat <b>${String(hot).padStart(2,'0')}:00</b> civarı çalışılıyor.` : `${perName()} içinde henüz kimse token yakmadı. Sayaç skill'i kurduğun anda sıfırdan başladı.`;
+  $('#totals').innerHTML = sumTok ? `${perName()}: toplam <b>${fmt(sumTok)} token</b>, API fiyatıyla <b>${usd(sumUsd)}</b>. En yoğun saat <b>${String(hot).padStart(2,'0')}:00</b>.` : `${perName()}: henüz kullanım yok.`;
   $('#totals').hidden = false;
 }
 
