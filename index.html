@@ -40,7 +40,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .tabs button:hover{color:var(--ink)}
 .tabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--t5)}
 .board{margin-top:8px}
-.head,.row{display:grid;grid-template-columns:40px minmax(180px,1.15fr) minmax(330px,2.4fr) 132px 92px 148px;gap:0 24px;align-items:center}
+.head,.row{display:grid;grid-template-columns:40px minmax(180px,1.15fr) minmax(330px,2.4fr) 132px 120px 148px;gap:0 24px;align-items:center}
 .head{padding:18px 0 10px;color:var(--faint);font-size:13px;border-bottom:1px solid var(--line)}
 .head span:nth-child(n+4){text-align:right}
 .row{padding:18px 0;border-bottom:1px solid var(--line);position:relative}
@@ -67,6 +67,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .big{font:500 28px/1 var(--display);letter-spacing:-.01em}
 .row.first .n7 .big{color:var(--t5)}
+.sub .lim{color:var(--ink);font-weight:500}
 .sub{color:var(--dim);font-size:13px;margin-top:5px;font-variant-numeric:normal}
 .meters{display:grid;gap:10px}
 .meter .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
@@ -188,7 +189,7 @@ function until(iso){
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function heatColor(v, max){
   if (!v) return 'var(--t0)';
-  const x = Math.pow(v/max, .55) * (RAMP.length-1);
+  const x = Math.pow(Math.min(1, v/max), .55) * (RAMP.length-1);
   const i = Math.min(RAMP.length-2, Math.floor(x)), f = x - i;
   const a = RAMP[i], b = RAMP[i+1];
   const mix = (p,q) => Math.round(parseInt(a.slice(p,q),16)*(1-f)+parseInt(b.slice(p,q),16)*f);
@@ -227,13 +228,18 @@ function calRange(people){
   const min = dAdd(end, -7 * 20 + 1);
   return [first < min ? first : min, end];
 }
-function hourHeat(p, max){
+let RATE = { five: 0.196, week: 0.0545 };
+const pct = (x) => '%' + (x < 10 ? x.toFixed(1).replace('.', ',') : Math.round(x));
+const kOf = (p) => p.all.tok ? p.all.usd / p.all.tok : 0;
+function hourHeat(p){
+  const k = kOf(p);
   const days = p.days.slice(-7);
   const idx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
-  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
+  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 20)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
   return `<div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>`;
 }
-function calHeat(p, max, start, end){
+function calHeat(p, start, end){
+  const k = kOf(p);
   const m = dayMap(p);
   const lead = (dUTC(start).getUTCDay() + 6) % 7;
   const first = dAdd(start, -lead);
@@ -246,7 +252,7 @@ function calHeat(p, max, start, end){
     if (d < start || d > end) { cells += '<i class="x"></i>'; continue; }
     const [v, mm] = m[d] || [0, {}];
     const dt = dUTC(d);
-    cells += `<i style="background:${heatColor(v, max)}" data-t="${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${DAYS[dt.getUTCDay()]}" data-v="${v}" data-m="${esc(mList(mm))}"></i>`;
+    cells += `<i style="background:${heatColor(v * k * RATE.week, 100 / 7)}" data-p="haftalık limit ≈${pct(v * k * RATE.week)}" data-t="${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${DAYS[dt.getUTCDay()]}" data-v="${v}" data-m="${esc(mList(mm))}"></i>`;
   }
   const size = `repeat(${weeks}, minmax(0, ${weeks > 30 ? 12 : weeks > 8 ? 16 : 20}px))`;
   return `<div class="cal"><div class="ml" style="grid-template-columns:${size}">${months}</div><div class="dls"><span>Pzt</span><span></span><span>Çar</span><span></span><span>Cum</span><span></span><span>Paz</span></div><div class="weeks" style="grid-template-columns:${size}">${cells}</div></div>`;
@@ -298,7 +304,8 @@ function render(people){
   const groupTok = people.reduce((n, x) => n + sumOf(x, PERIOD).tok, 0);
   const hourly = ['today','yday','w1'].includes(PERIOD);
   const [cs, ce] = hourly ? [] : calRange(people);
-  const max = hourly ? Math.max(1, ...people.flatMap(p => p.hours.flat())) : Math.max(1, ...people.flatMap(p => Object.entries(dayMap(p)).filter(e => e[0] >= cs && e[0] <= ce).map(e => e[1][0])));
+  const rp = people.filter(p => p.rate && p.rate.week).sort((a, b) => b.updated - a.updated)[0];
+  if (rp) RATE = { five: rp.rate.five || RATE.five, week: rp.rate.week };
   const anyUse = people.some(p => p.all.tok > 0);
   let html = `<div class="head"><span></span><span>Kim</span><span>${HEADS[PERIOD]}</span><span>${perName()} token</span><span>Tahmini</span><span>Modeller</span></div>`;
   people.forEach((p, i) => {
@@ -307,15 +314,15 @@ function render(people){
     html += `<article class="row${i===0?' first':''}">
       <div class="rank">${i+1}</div>
       <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)} · güncellendi ${ago(p.updated)}${fav(p) ? `<br>favori <span class="model">${esc(fav(p))}</span>` : ''}</div></div>
-      ${hourly ? hourHeat(p, max) : calHeat(p, max, cs, ce)}
+      ${hourly ? hourHeat(p) : calHeat(p, cs, ce)}
       <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">${groupTok ? 'payı %' + Math.round(100 * sp.tok / groupTok) : 'payı —'} · ${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)}</div></div>
-      <div class="num usd"><div class="big" style="font-size:22px">${usd(sp.usd)}</div><div class="sub">${PERIOD === 'all' ? perName() : 'toplam ' + usd(p.all.usd)}</div></div>
+      <div class="num usd"><div class="big" style="font-size:22px">${usd(sp.usd)}</div><div class="sub">${PERIOD === 'all' ? perName() : 'toplam ' + usd(p.all.usd)}<br>haftalık <b class="lim">≈${pct(sp.usd * RATE.week)}</b>${PERIOD === 'today' ? `<br>5 saat <b class="lim">≈${pct(sp.usd * RATE.five)}</b>` : ''}</div></div>
       <div class="models">${models(sp.m, sp.tok)}</div>
     </article>`;
   });
   board.innerHTML = html;
   board.querySelectorAll('.cells i, .weeks i:not(.x)').forEach(c => {
-    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${c.dataset.m ? '<br><span>' + c.dataset.m + '</span>' : ''}`));
+    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${+c.dataset.v ? '<br><span>' + c.dataset.p + '</span>' : ''}${c.dataset.m ? '<br><span>' + c.dataset.m + '</span>' : ''}`));
     c.addEventListener('mouseleave', hideTip);
   });
 
@@ -349,7 +356,7 @@ function render(people){
   const hot = today.indexOf(Math.max(...today));
   const mm = {}; people.forEach(p => { for (const [k, v] of Object.entries(sumOf(p, PERIOD).m)) mm[k] = (mm[k] || 0) + v; });
   const ml = Object.entries(mm).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${fmt(v)}`).join(', ');
-  $('#totals').innerHTML = sumTok ? `${PERIOD === 'all' ? 'Tüm zaman' : perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
+  $('#totals').innerHTML = sumTok ? `${PERIOD === 'all' ? 'Tüm zaman' : perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>, haftalık limitin <b>≈${pct(sumUsd * RATE.week)}</b> kadarı.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
   $('#totals').hidden = false;
 }
 
