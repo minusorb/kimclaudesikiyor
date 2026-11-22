@@ -36,9 +36,16 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 
 .tabs{display:flex;gap:4px;flex-wrap:wrap;padding:20px 0 4px}
 .tabs{gap:0;padding:20px 0 4px}
-.tabs button{font:500 14px/1 var(--body);color:var(--dim);background:transparent;border:0;border-bottom:2px solid transparent;padding:12px 14px;min-height:44px;cursor:pointer;transition:color .15s,border-color .15s}
+.tabs{position:relative}
+.tabs button{font:500 14px/1 var(--body);color:var(--dim);background:transparent;border:0;padding:12px 14px;min-height:44px;cursor:pointer;transition:color .2s}
+.tabs .ind{position:absolute;left:0;bottom:4px;height:2px;width:0;background:var(--t5)}
+.tabs .ind.go{transition:transform .42s cubic-bezier(.22,1,.36,1),width .42s cubic-bezier(.22,1,.36,1)}
+#plot circle:not([data-n]){transition:opacity .3s}
+#plot.morph circle:not([data-n]){opacity:0}
+#plot.morph text{animation:axin .45s ease-out both}
+@keyframes axin{from{opacity:0}}
 .tabs button:hover{color:var(--ink)}
-.tabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--t5)}
+.tabs button[aria-pressed="true"]{color:var(--ink)}
 .board{margin-top:8px}
 .head,.row{display:grid;grid-template-columns:40px minmax(180px,1.15fr) minmax(330px,2.4fr) 132px 120px 148px;gap:0 24px;align-items:center}
 .head{padding:18px 0 10px;color:var(--faint);font-size:13px;border-bottom:1px solid var(--line)}
@@ -283,16 +290,32 @@ function sumOf(p, per){
   return pick.reduce((a, x) => { for (const [k, v] of Object.entries(x.m || {})) a.m[k] = (a.m[k] || 0) + v; a.tok += x.tok; a.usd += x.usd; return a; }, { tok: 0, usd: 0, m: {} });
 }
 const perName = () => (PERIODS.find(p => p[0] === PERIOD) || PERIODS[2])[1];
+let TABS_BUILT = false, ANIM = false, CH = null, PLOT_ID = 0;
 function tabs(){
-  $('#tabs').innerHTML = PERIODS.map(([k, n]) => `<button type="button" data-p="${k}" aria-pressed="${k === PERIOD}">${n}</button>`).join('');
-  $('#tabs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-    PERIOD = b.dataset.p; try { localStorage.setItem('kcs-p', PERIOD); } catch {}
-    tabs(); if (LAST) render(LAST);
-  }));
+  const nav = $('#tabs');
+  if (!TABS_BUILT){
+    nav.innerHTML = '<span class="ind"></span>' + PERIODS.map(([k, n]) => `<button type="button" data-p="${k}">${n}</button>`).join('');
+    nav.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.p === PERIOD) return;
+      PERIOD = b.dataset.p; try { localStorage.setItem('kcs-p', PERIOD); } catch {}
+      ANIM = true; tabs(); if (LAST) render(LAST);
+    }));
+    TABS_BUILT = true;
+  }
+  nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === PERIOD)));
+  const on = nav.querySelector('button[aria-pressed="true"]'), ind = nav.querySelector('.ind');
+  if (on && ind){
+    ind.style.width = on.offsetWidth + 'px';
+    ind.style.transform = `translateX(${on.offsetLeft}px)`;
+    if (!ind.classList.contains('go')) requestAnimationFrame(() => requestAnimationFrame(() => ind.classList.add('go')));
+  }
 }
+addEventListener('resize', tabs);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(tabs);
 let LAST = null;
 function render(people){
   LAST = people;
+  const doAnim = ANIM; ANIM = false;
   people.sort((a,b) => sumOf(b, PERIOD).tok - sumOf(a, PERIOD).tok || b.all.tok - a.all.tok);
   const live = $('#live');
   const newest = Math.max(...people.map(p => p.updated));
@@ -323,6 +346,7 @@ function render(people){
     </article>`;
   });
   board.innerHTML = html;
+  if (doAnim && board.animate) board.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
   board.querySelectorAll('.cells i, .weeks i:not(.x)').forEach(c => {
     c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${+c.dataset.v ? '<br><span>' + c.dataset.p + '</span>' : ''}${c.dataset.m ? '<br><span>' + c.dataset.m.split('\n').map(esc).join('<br>') + '</span>' : ''}`));
     c.addEventListener('mouseleave', hideTip);
@@ -359,11 +383,29 @@ function render(people){
   const every = Math.max(1, Math.ceil(days.length / (W < 600 ? 6 : 13))); days.forEach((d,i) => { if ((i%every===0 && days.length-1-i >= every*0.6) || i===days.length-1) svg += `<text x="${padL+i*step}" y="${Hh-8}" text-anchor="middle" fill="#7d6f83" font-size="12" font-family="Host Grotesk">${labels[i]}</text>`; });
   series.slice().reverse().forEach(s => {
     const pts = s.v.map((v,i) => `${padL+i*step},${y(v)}`).join(' ');
-    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    svg += `<polyline data-n="${esc(s.name)}" points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
     s.v.forEach((v,i) => svg += `<circle cx="${padL+i*step}" cy="${y(v)}" r="9" fill="transparent" data-n="${esc(s.name)}" data-d="${esc(tips[i])}" data-v="${v}"/>${days.length > 40 ? '' : `<circle cx="${padL+i*step}" cy="${y(v)}" r="2.6" fill="${s.color}" pointer-events="none"/>`}`);
   });
   svg += `</svg>`;
-  $('#plot').innerHTML = svg;
+  const plot = $('#plot'), nPts = days.length, fin = {};
+  series.forEach(s => fin[s.name] = s.v.map(v => y(v)));
+  plot.innerHTML = svg;
+  const id = ++PLOT_ID;
+  if (doAnim && CH && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    const resamp = (a, n) => !a ? Array(n).fill(y(0)) : a.length === 1 ? Array(n).fill(a[0]) : Array.from({ length: n }, (_, i) => { const q = i / (n - 1) * (a.length - 1), k = Math.floor(q); return a[k] + (a[Math.min(k + 1, a.length - 1)] - a[k]) * (q - k); });
+    const polys = [...plot.querySelectorAll('polyline')], from = polys.map(pl => resamp(CH[pl.dataset.n], nPts));
+    const draw = e => polys.forEach((pl, j) => pl.setAttribute('points', fin[pl.dataset.n].map((yy, i) => `${padL + i * step},${from[j][i] + (yy - from[j][i]) * e}`).join(' ')));
+    plot.classList.add('morph'); draw(0);
+    const t0 = performance.now();
+    const tick = now => {
+      if (id !== PLOT_ID) return;
+      const t = Math.min(1, (now - t0) / 560);
+      draw(1 - Math.pow(1 - t, 3));
+      if (t < 1) requestAnimationFrame(tick); else plot.classList.remove('morph');
+    };
+    requestAnimationFrame(tick);
+  }
+  CH = fin;
   $('#legend').innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
   $('#plot').querySelectorAll('circle[data-n]').forEach(c => {
     c.addEventListener('mousemove', e => showTip(e, `${c.dataset.n} <span>·</span> ${c.dataset.d} <span>·</span> ${fmt(+c.dataset.v)} token`));
