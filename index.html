@@ -68,6 +68,16 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .bar span{display:block;height:100%;border-radius:3px;background:var(--dim);transform-origin:left;transition:transform .6s cubic-bezier(.2,.7,.2,1)}
 .meter.hi .bar span{background:var(--t4)}
 .meter.none .lab b{color:var(--faint);font-weight:400}
+.acct{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:12px 32px;align-items:end;padding:20px 0;border-bottom:1px solid var(--line)}
+.acct h2{margin:0;font:500 15px/1.3 var(--body);color:var(--ink)}
+.acct h2 span{display:block;color:var(--faint);font-weight:400;font-size:13px}
+.models{display:grid;gap:6px;font-size:13px;font-variant-numeric:tabular-nums}
+.models div{display:grid;grid-template-columns:1fr auto;gap:8px;color:var(--dim)}
+.models div b{color:var(--ink);font-weight:500}
+.models .mbar{grid-column:1/-1;height:3px;border-radius:2px;background:var(--s2);overflow:hidden}
+.models .mbar i{display:block;height:100%;background:var(--dim);transform-origin:left}
+.models div:first-child .mbar i{background:var(--t4)}
+.models .none{color:var(--faint)}
 .reset{font-size:12px;color:var(--faint);margin-top:4px;min-height:1em}
 
 section.chart{padding:clamp(40px,6vw,72px) 0 8px}
@@ -90,16 +100,18 @@ footer code{font-family:inherit;color:var(--dim)}
 .empty h3,.err h3{font:600 24px/1.2 var(--display);color:var(--ink);margin:0 0 8px}
 
 @media (max-width:1100px){
+  .acct{grid-template-columns:1fr 1fr}
+  .acct h2{grid-column:1/-1}
   .head{display:none}
   .row{grid-template-columns:34px 1fr auto;grid-template-areas:"r w n" "h h h" "m m c";gap:14px 16px}
-  .rank{grid-area:r}.who{grid-area:w}.heat{grid-area:h}.n7{grid-area:n}.usd{grid-area:c;align-self:end}.meters{grid-area:m;grid-template-columns:1fr 1fr;gap:16px}
+  .rank{grid-area:r}.who{grid-area:w}.heat{grid-area:h}.n7{grid-area:n}.usd{grid-area:c;align-self:end}.models{grid-area:m}
 }
 @media (max-width:560px){
   header.top{flex-direction:column;align-items:flex-start}
   .live{text-align:left}
   .row{grid-template-areas:"r w w" "r n n" "h h h" "m m m" "c c c"}
   .n7,.usd{text-align:left}
-  .meters{grid-template-columns:1fr}
+  .acct{grid-template-columns:1fr}
   .totals{grid-template-columns:1fr}
   .totals div+div{padding-left:0;border-left:0;border-top:1px solid var(--line)}
   .heat{grid-template-columns:22px 1fr}
@@ -117,6 +129,7 @@ footer code{font-family:inherit;color:var(--dim)}
       </div>
       <div class="live" id="live"></div>
     </header>
+    <section class="acct" id="acct" hidden></section>
     <nav class="tabs" id="tabs" aria-label="Dönem"></nav>
     <div class="board" id="board"></div>
     <section class="chart" id="chart" hidden>
@@ -184,11 +197,28 @@ const tip = $('#tip');
 function showTip(e, html){ tip.innerHTML = html; tip.classList.add('show'); const x = Math.min(e.clientX+14, innerWidth - tip.offsetWidth - 8); tip.style.left = x+'px'; tip.style.top = (e.clientY+16)+'px'; }
 function hideTip(){ tip.classList.remove('show'); }
 
+function fav(p){
+  const e = Object.entries((p.all && p.all.m) || {}).sort((a, b) => b[1] - a[1])[0];
+  return e ? e[0] : p.model;
+}
+function models(m, tot){
+  const e = Object.entries(m || {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (!e.length) return '<span class="none">bu dönemde kullanım yok</span>';
+  return e.map(([k, v]) => `<div><span>${esc(k)}</span><b>${fmt(v)}</b><span class="mbar"><i style="transform:scaleX(${tot ? v / tot : 0})"></i></span></div>`).join('');
+}
+function account(people){
+  const p = people.filter(x => x.planAt).sort((a, b) => b.planAt - a.planAt)[0];
+  const el = $('#acct');
+  if (!p) { el.hidden = true; return; }
+  const stale = Date.now() - p.planAt > 6*36e5;
+  el.innerHTML = `<h2>Ortak hesap${p.plan ? ' · ' + esc(p.plan) : ''}<span>okuma ${ago(p.planAt)}</span></h2>${meter('5 saatlik limit', p.five, stale)}${meter('Haftalık, tüm modeller', p.week, stale)}${meter('Haftalık, Fable', p.weekFable, stale)}`;
+  el.hidden = false;
+}
 function sumOf(p, per){
-  if (per === 'all') return { tok: p.all.tok, usd: p.all.usd };
+  if (per === 'all') return { tok: p.all.tok, usd: p.all.usd, m: p.all.m || {} };
   const d = p.days || [];
   const pick = per === 'today' ? d.slice(-1) : per === 'yday' ? d.slice(-2, -1) : d.slice(-({w1:7,w2:14,w3:21,m1:30})[per]);
-  return pick.reduce((a, x) => ({ tok: a.tok + x.tok, usd: a.usd + x.usd }), { tok: 0, usd: 0 });
+  return pick.reduce((a, x) => { for (const [k, v] of Object.entries(x.m || {})) a.m[k] = (a.m[k] || 0) + v; a.tok += x.tok; a.usd += x.usd; return a; }, { tok: 0, usd: 0, m: {} });
 }
 const perName = () => (PERIODS.find(p => p[0] === PERIOD) || PERIODS[2])[1];
 function tabs(){
@@ -210,9 +240,11 @@ function render(people){
     board.innerHTML = `<div class="empty"><h3>Henüz kimse rapor vermedi</h3>Skill'i kuran ilk kişi on dakika içinde burada görünür. Hemen görmek için kendi bilgisayarında <code>node ~/.claude/together/together.js push</code> çalıştır.</div>`;
     return;
   }
+  account(people);
+  const groupTok = people.reduce((n, x) => n + sumOf(x, PERIOD).tok, 0);
   const max = Math.max(1, ...people.flatMap(p => p.hours.flat()));
   const anyUse = people.some(p => p.all.tok > 0);
-  let html = `<div class="head"><span></span><span>Kim</span><span>Son 7 gün, saat saat</span><span>${perName()} token</span><span>Tahmini</span><span>Plan</span></div>`;
+  let html = `<div class="head"><span></span><span>Kim</span><span>Son 7 gün, saat saat</span><span>${perName()} token</span><span>Tahmini</span><span>Modeller</span></div>`;
   people.forEach((p, i) => {
     const days = p.days.slice(-7);
     const stale = p.planAt && Date.now() - p.planAt > 6*36e5;
@@ -220,11 +252,11 @@ function render(people){
     const rows = p.hours.map((r, di) => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${r.map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}"></i>`).join('')}</div>`).join('');
     html += `<article class="row${i===0?' first':''}">
       <div class="rank">${i+1}</div>
-      <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)}${p.model?` · <span class="model">${esc(p.model)}</span>`:''}${p.plan?` · ${esc(p.plan)}`:''}<br>güncellendi ${ago(p.updated)}</div></div>
+      <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)} · güncellendi ${ago(p.updated)}${fav(p) ? `<br>favori <span class="model">${esc(fav(p))}</span>` : ''}</div></div>
       <div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>
-      <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)} · ${p.d7.prompts} mesaj/hafta</div></div>
+      <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">${groupTok ? 'payı %' + Math.round(100 * sp.tok / groupTok) : 'payı —'} · ${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)}</div></div>
       <div class="num usd"><div class="big" style="font-size:22px">${usd(sp.usd)}</div><div class="sub">${PERIOD === 'all' ? perName() : 'toplam ' + usd(p.all.usd)}</div></div>
-      <div class="meters">${meter('5 saat', p.five, stale)}${meter('Haftalık', p.week, stale)}</div>
+      <div class="models">${models(sp.m, sp.tok)}</div>
     </article>`;
   });
   board.innerHTML = html;
