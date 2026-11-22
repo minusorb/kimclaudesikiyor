@@ -68,6 +68,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .bar span{display:block;height:100%;border-radius:3px;background:var(--dim);transform-origin:left;transition:transform .6s cubic-bezier(.2,.7,.2,1)}
 .meter.hi .bar span{background:var(--t4)}
 .meter.none .lab b{color:var(--faint);font-weight:400}
+.reset{font-size:12px;color:var(--faint);margin-top:4px;min-height:1em}
 
 section.chart{padding:clamp(40px,6vw,72px) 0 8px}
 .ch{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
@@ -175,7 +176,7 @@ function meter(label, w, stale){
   const hi = w && typeof w.p === 'number' && w.p >= 80;
   if (!w || typeof w.p !== 'number') return `<div class="meter none"><div class="lab"><span>${label}</span><b>okunamadı</b></div><div class="bar"></div></div>`;
   const p = Math.max(0, Math.min(100, w.p));
-  return `<div class="meter${hi?' hi':''}" title="${esc(until(w.resets))}"><div class="lab"><span>${label}</span><b>%${Math.round(p)}${stale?' · eski':''}</b></div><div class="bar"><span style="transform:scaleX(${p/100});--bw:${p?100*100/p:100}%"></span></div></div>`;
+  return `<div class="meter${hi?' hi':''}"><div class="lab"><span>${label}</span><b>%${Math.round(p)}${stale?' · eski':''}</b></div><div class="bar"><span style="transform:scaleX(${p/100})"></span></div><div class="reset">${esc(until(w.resets))}</div></div>`;
 }
 function dayLabel(iso){ const d = new Date(iso+'T12:00:00'); return DAYS[d.getDay()]; }
 
