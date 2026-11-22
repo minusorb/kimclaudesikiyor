@@ -235,7 +235,7 @@ function hourHeat(p){
   const k = kOf(p);
   const days = p.days.slice(-7);
   const idx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
-  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 15)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)} · haftalık ≈${pct(v * k * RATE.week)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
+  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 50)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)} · haftalık ≈${pct(v * k * RATE.week)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
   return `<div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>`;
 }
 function calHeat(p, start, end){
