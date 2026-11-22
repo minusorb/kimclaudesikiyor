@@ -189,7 +189,7 @@ function until(iso){
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function heatColor(v, max){
   if (!v) return 'var(--t0)';
-  const x = Math.pow(Math.min(1, v/max), .55) * (RAMP.length-1);
+  const x = Math.min(1, v/max) * (RAMP.length-1);
   const i = Math.min(RAMP.length-2, Math.floor(x)), f = x - i;
   const a = RAMP[i], b = RAMP[i+1];
   const mix = (p,q) => Math.round(parseInt(a.slice(p,q),16)*(1-f)+parseInt(b.slice(p,q),16)*f);
@@ -235,7 +235,7 @@ function hourHeat(p){
   const k = kOf(p);
   const days = p.days.slice(-7);
   const idx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
-  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 20)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)} · haftalık ≈${pct(v * k * RATE.week)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
+  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 10)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)} · haftalık ≈${pct(v * k * RATE.week)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
   return `<div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>`;
 }
 function calHeat(p, start, end){
@@ -252,7 +252,7 @@ function calHeat(p, start, end){
     if (d < start || d > end) { cells += '<i class="x"></i>'; continue; }
     const [v, mm] = m[d] || [0, {}];
     const dt = dUTC(d);
-    cells += `<i style="background:${heatColor(v * k * RATE.week, 100 / 7)}" data-p="haftalık limit ≈${pct(v * k * RATE.week)}" data-t="${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${DAYS[dt.getUTCDay()]}" data-v="${v}" data-m="${esc(mList(mm))}"></i>`;
+    cells += `<i style="background:${heatColor(v * k * RATE.week, 5)}" data-p="haftalık limit ≈${pct(v * k * RATE.week)}" data-t="${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${DAYS[dt.getUTCDay()]}" data-v="${v}" data-m="${esc(mList(mm))}"></i>`;
   }
   const size = `repeat(${weeks}, minmax(0, ${weeks > 30 ? 12 : weeks > 8 ? 16 : 20}px))`;
   return `<div class="cal"><div class="ml" style="grid-template-columns:${size}">${months}</div><div class="dls"><span>Pzt</span><span></span><span>Çar</span><span></span><span>Cum</span><span></span><span>Paz</span></div><div class="weeks" style="grid-template-columns:${size}">${cells}</div></div>`;
