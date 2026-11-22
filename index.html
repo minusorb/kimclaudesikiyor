@@ -155,7 +155,7 @@ const $ = (s) => document.querySelector(s);
 const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const HEADS = {today:'Bugün, saat saat', yday:'Dün, saat saat', w1:'Son 7 gün, saat saat', w2:'Son 14 gün, gün gün', w3:'Son 21 gün, gün gün', m1:'Son 30 gün, gün gün', all:'Tüm zaman, gün gün'};
-const RAMP = ['#ffffff','#a6f0b4','#2fc45c','#f2e03a','#ffae1f','#f5521f','#d6141a'];
+const BANDS = [[2,'#ffffff'],[5,'#b9f3c4'],[10,'#2fc45c'],[20,'#a9d93b'],[30,'#f5e03a'],[40,'#ff9a1f'],[50,'#f2522a'],[Infinity,'#d6141a']];
 const PERIODS = [['today','bugün'],['yday','dün'],['w1','1 hafta'],['w2','2 hafta'],['w3','3 hafta'],['m1','1 ay'],['all','toplam']];
 let PERIOD = (() => { try { return localStorage.getItem('kcs-p') || 'w1'; } catch { return 'w1'; } })();
 const LINE = ['#fde9a6','#ec5e3c','#b8326e','#f9a03b','#9b5de5','#e8d5ff','#ff8fab','#7ae0c3'];
@@ -189,11 +189,8 @@ function until(iso){
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function heatColor(v, max){
   if (!v) return 'var(--t0)';
-  const x = Math.min(1, v/max) * (RAMP.length-1);
-  const i = Math.min(RAMP.length-2, Math.floor(x)), f = x - i;
-  const a = RAMP[i], b = RAMP[i+1];
-  const mix = (p,q) => Math.round(parseInt(a.slice(p,q),16)*(1-f)+parseInt(b.slice(p,q),16)*f);
-  return `rgb(${mix(1,3)},${mix(3,5)},${mix(5,7)})`;
+  const p = v / max * 50;
+  return BANDS.find(b => p < b[0])[1];
 }
 function meter(label, w, stale){
   const hi = w && typeof w.p === 'number' && w.p >= 80;
