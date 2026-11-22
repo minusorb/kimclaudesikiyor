@@ -167,7 +167,7 @@ function keyText(){
   if (h) { try{localStorage.setItem('kcs-k',h)}catch{} history.replaceState(null,'',location.pathname); return h; }
   try{return localStorage.getItem('kcs-k')}catch{return null}
 }
-async function open(key, blob){
+async function unseal(key, blob){
   const raw = Uint8Array.from(atob(blob), c => c.charCodeAt(0));
   const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: raw.slice(0,12)}, key, raw.slice(12));
   return JSON.parse(new TextDecoder().decode(pt));
@@ -209,12 +209,12 @@ function hideTip(){ tip.classList.remove('show'); }
 
 function hourModels(p, di, h){
   const x = (p.hm || []).find(r => r[0] === di && r[1] === h);
-  return x ? Object.entries(x[2]).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ') : '';
+  return x ? Object.entries(x[2]).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join('\n') : '';
 }
 const dUTC = (s) => new Date(s + 'T00:00:00Z');
 const dKey = (d) => d.toISOString().slice(0, 10);
 const dAdd = (s, n) => { const d = dUTC(s); d.setUTCDate(d.getUTCDate() + n); return dKey(d); };
-const mList = (m) => Object.entries(m || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ');
+const mList = (m) => Object.entries(m || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join('\n');
 function dayMap(p){
   const m = {};
   (p.days || []).forEach(x => m[x.d] = [x.tok, x.m]);
@@ -322,7 +322,7 @@ function render(people){
   });
   board.innerHTML = html;
   board.querySelectorAll('.cells i, .weeks i:not(.x)').forEach(c => {
-    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${+c.dataset.v ? '<br><span>' + c.dataset.p + '</span>' : ''}${c.dataset.m ? '<br><span>' + c.dataset.m + '</span>' : ''}`));
+    c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${+c.dataset.v ? '<br><span>' + c.dataset.p + '</span>' : ''}${c.dataset.m ? '<br><span>' + c.dataset.m.split('\n').map(esc).join('<br>') + '</span>' : ''}`));
     c.addEventListener('mouseleave', hideTip);
   });
 
@@ -414,7 +414,7 @@ async function people(list){
     const m = /^together:v1:([0-9a-f]+):(.+)$/s.exec(c.body || '');
     if (!m) continue;
     total++;
-    try { const d = await open(KEY, m[2].trim()); if (!byId.has(m[1]) || byId.get(m[1]).updated < d.updated) byId.set(m[1], d); } catch {}
+    try { const d = await unseal(KEY, m[2].trim()); if (!d || typeof d !== 'object') continue; if (!byId.has(m[1]) || byId.get(m[1]).updated < d.updated) byId.set(m[1], d); } catch {}
   }
   return { list: [...byId.values()], total };
 }
