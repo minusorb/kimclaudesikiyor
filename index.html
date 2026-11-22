@@ -235,7 +235,7 @@ function hourHeat(p){
   const k = kOf(p);
   const days = p.days.slice(-7);
   const idx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
-  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 20)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
+  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v * k * RATE.five, 20)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-p="5 saatlik limit ≈${pct(v * k * RATE.five)} · haftalık ≈${pct(v * k * RATE.week)}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
   return `<div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>`;
 }
 function calHeat(p, start, end){
@@ -351,12 +351,17 @@ function render(people){
   });
   $('#chart').hidden = false;
 
-  const sumTok = people.reduce((n,p) => n + sumOf(p, PERIOD).tok, 0), sumUsd = people.reduce((n,p) => n + sumOf(p, PERIOD).usd, 0);
-  const today = Array(24).fill(0); people.forEach(p => (p.hours[p.hours.length - 1] || []).forEach((v,h) => today[h] += v));
-  const hot = today.indexOf(Math.max(...today));
-  const mm = {}; people.forEach(p => { for (const [k, v] of Object.entries(sumOf(p, PERIOD).m)) mm[k] = (mm[k] || 0) + v; });
-  const ml = Object.entries(mm).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${fmt(v)}`).join(', ');
-  $('#totals').innerHTML = sumTok ? `${PERIOD === 'all' ? 'Tüm zaman' : perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>, haftalık limitin <b>≈${pct(sumUsd * RATE.week)}</b> kadarı.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
+  const hIdx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
+  const hs = Array(24).fill(0); people.forEach(p => hIdx.forEach(di => (p.hours[di] || []).forEach((v,h) => hs[h] += v)));
+  const hTop = Math.max(...hs), hot = hs.indexOf(hTop);
+  const [ds, de] = hourly ? [people[0].days.slice(-7)[0].d, people[0].days.slice(-1)[0].d] : [cs, ce];
+  const dt = {}; people.forEach(p => Object.entries(dayMap(p)).forEach(([d, x]) => { if (d >= ds && d <= de) dt[d] = (dt[d] || 0) + x[0]; }));
+  const hd = Object.entries(dt).sort((a, b) => b[1] - a[1])[0];
+  const dl = hd && hd[1] ? (() => { const d = dUTC(hd[0]); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${DAYS[d.getUTCDay()]}`; })() : '';
+  const hourPart = !hourly || !hTop ? '' : `En yoğun saat <b>${String(hot).padStart(2,'0')}:00</b>`;
+  const dayPart = ['today','yday'].includes(PERIOD) || !dl ? '' : `en yoğun gün <b>${dl}</b>`;
+  const line = [hourPart, dayPart].filter(Boolean).join(', ');
+  $('#totals').innerHTML = line ? line.charAt(0).toUpperCase() + line.slice(1) + '.' : 'Bu dönemde kullanım yok.';
   $('#totals').hidden = false;
 }
 
