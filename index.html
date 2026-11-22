@@ -133,7 +133,7 @@ footer code{font-family:inherit;color:var(--dim)}
   .totals div+div{padding-left:0;border-left:0;border-top:1px solid var(--line)}
   .heat{grid-template-columns:22px 1fr}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -391,7 +391,7 @@ function render(people){
   series.forEach(s => fin[s.name] = s.v.map(v => y(v)));
   plot.innerHTML = svg;
   const id = ++PLOT_ID;
-  if (doAnim && CH && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+  if (doAnim && CH){
     const resamp = (a, n) => !a ? Array(n).fill(y(0)) : a.length === 1 ? Array(n).fill(a[0]) : Array.from({ length: n }, (_, i) => { const q = i / (n - 1) * (a.length - 1), k = Math.floor(q); return a[k] + (a[Math.min(k + 1, a.length - 1)] - a[k]) * (q - k); });
     const polys = [...plot.querySelectorAll('polyline')], from = polys.map(pl => resamp(CH[pl.dataset.n], nPts));
     const draw = e => polys.forEach((pl, j) => pl.setAttribute('points', fin[pl.dataset.n].map((yy, i) => `${padL + i * step},${from[j][i] + (yy - from[j][i]) * e}`).join(' ')));
