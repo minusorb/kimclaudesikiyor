@@ -270,22 +270,42 @@ function fail(title, text){
 }
 
 let KEY = null;
-async function load(){
-  try{
-    const r = await fetch(`https://api.github.com/repos/${REPO}/issues/${ISSUE}/comments?per_page=100`, {headers:{Accept:'application/vnd.github+json'}, cache:'no-store'});
-    if (r.status === 403 || r.status === 429) return fail('GitHub şimdilik yavaşlattı', 'Saatlik okuma sınırı doldu. Sayfa birkaç dakika içinde kendi kendine tekrar dener.');
-    if (!r.ok) return fail('Rakamlar alınamadı', `GitHub ${r.status} döndü. Sayfa iki dakika sonra tekrar deneyecek.`);
-    const list = await r.json();
-    const byId = new Map();
-    for (const c of list) {
-      const m = /^together:v1:([0-9a-f]+):(.+)$/s.exec(c.body || '');
-      if (!m) continue;
-      try { const d = await open(KEY, m[2].trim()); if (!byId.has(m[1]) || byId.get(m[1]).updated < d.updated) byId.set(m[1], d); } catch {}
-    }
-    render([...byId.values()]);
-  }catch(e){
-    fail('Bağlantı yok', 'İnternet bağlantısı gelince sayfa kendi kendine yenilenecek.');
+const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+async function comments(){
+  const cached = store.get('kcs-c');
+  const headers = { Accept: 'application/vnd.github+json' };
+  if (cached && cached.etag) headers['If-None-Match'] = cached.etag;
+  let r = null;
+  try { r = await fetch(`https://api.github.com/repos/${REPO}/issues/${ISSUE}/comments?per_page=100`, { headers }); } catch {}
+  if (r && r.status === 304 && cached) return { list: cached.list, ok: true };
+  if (r && r.ok) {
+    const list = (await r.json()).map(c => ({ body: c.body }));
+    store.set('kcs-c', { etag: r.headers.get('ETag'), list, at: Date.now() });
+    return { list, ok: true };
   }
+  return { list: cached ? cached.list : null, ok: false, limited: r && (r.status === 403 || r.status === 429), offline: !r };
+}
+async function people(list){
+  const byId = new Map();
+  let total = 0;
+  for (const c of list) {
+    const m = /^together:v1:([0-9a-f]+):(.+)$/s.exec(c.body || '');
+    if (!m) continue;
+    total++;
+    try { const d = await open(KEY, m[2].trim()); if (!byId.has(m[1]) || byId.get(m[1]).updated < d.updated) byId.set(m[1], d); } catch {}
+  }
+  return { list: [...byId.values()], total };
+}
+async function load(first){
+  const got = await comments();
+  if (!got.list) {
+    if (first) return false;
+    return fail(got.limited ? 'GitHub şimdilik yavaşlattı' : 'Bağlantı yok', got.limited ? 'Saatlik okuma sınırı doldu. Sayfa birkaç dakika içinde kendi kendine tekrar dener.' : 'İnternet bağlantısı gelince sayfa kendi kendine yenilenecek.');
+  }
+  const p = await people(got.list);
+  if (first && p.total && !p.list.length) return 'badkey';
+  render(p.list);
+  return true;
 }
 
 addEventListener('hashchange', () => { if (/k=/.test(location.hash)) location.reload(); });
@@ -295,17 +315,13 @@ addEventListener('hashchange', () => { if (/k=/.test(location.hash)) location.re
   try{
     KEY = await crypto.subtle.importKey('raw', b64u(k), 'AES-GCM', false, ['decrypt']);
   }catch{ return; }
-  const r = await fetch(`https://api.github.com/repos/${REPO}/issues/${ISSUE}/comments?per_page=5`, {cache:'no-store'}).catch(() => null);
-  if (r && r.ok) {
-    const list = await r.json();
-    const first = list.map(c => /^together:v1:[0-9a-f]+:(.+)$/s.exec(c.body || '')).find(Boolean);
-    if (first) { try { await open(KEY, first[1].trim()); } catch { try{localStorage.removeItem('kcs-k')}catch{} return; } }
-  }
   document.title = 'kim claude sikiyor';
   document.body.classList.add('on');
   tabs();
-  load();
-  setInterval(load, 120000);
+  const res = await load(true);
+  if (res === 'badkey') { try{ localStorage.removeItem('kcs-k'); }catch{} document.body.classList.remove('on'); document.title = '​'; return; }
+  if (res === false) fail('GitHub şimdilik yavaşlattı', 'Saatlik okuma sınırı doldu. Sayfa birkaç dakika içinde kendi kendine tekrar dener.');
+  setInterval(() => load(false), 300000);
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => LAST && render(LAST), 200); });
 })();
 </script>
