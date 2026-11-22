@@ -315,7 +315,7 @@ function render(people){
       <div class="rank">${i+1}</div>
       <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)} · güncellendi ${ago(p.updated)}${fav(p) ? `<br>favori <span class="model">${esc(fav(p))}</span>` : ''}</div></div>
       ${hourly ? hourHeat(p) : calHeat(p, cs, ce)}
-      <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">${groupTok ? 'payı %' + Math.round(100 * sp.tok / groupTok) : 'payı —'} · ${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)}</div></div>
+      <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">Used: <b class="lim">${groupTok ? Math.round(100 * sp.tok / groupTok) + '%' : '—'}</b><br>${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)} token</div></div>
       <div class="num usd"><div class="big" style="font-size:22px">${usd(sp.usd)}</div><div class="sub">${PERIOD === 'all' ? perName() : 'toplam ' + usd(p.all.usd)}<br>haftalık <b class="lim">≈${pct(sp.usd * RATE.week)}</b>${PERIOD === 'today' ? `<br>5 saat <b class="lim">≈${pct(sp.usd * RATE.five)}</b>` : ''}</div></div>
       <div class="models">${models(sp.m, sp.tok)}</div>
     </article>`;
