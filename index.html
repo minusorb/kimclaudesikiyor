@@ -272,6 +272,10 @@ function fail(title, text){
 let KEY = null;
 const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 async function comments(){
+  try {
+    const d = await fetch(`https://raw.githubusercontent.com/${REPO}/main/data.json?t=${Math.floor(Date.now() / 60000)}`);
+    if (d.ok) { const list = await d.json(); store.set('kcs-c', { list, at: Date.now() }); return { list, ok: true }; }
+  } catch {}
   const cached = store.get('kcs-c');
   const headers = { Accept: 'application/vnd.github+json' };
   if (cached && cached.etag) headers['If-None-Match'] = cached.etag;
