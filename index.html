@@ -156,7 +156,7 @@ const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const HEADS = {today:'Bugün, saat saat', yday:'Dün, saat saat', w1:'Son 7 gün, saat saat', w2:'Son 14 gün, gün gün', w3:'Son 21 gün, gün gün', m1:'Son 30 gün, gün gün', all:'Tüm zaman, gün gün'};
 const COLORS = ['#f9a03b','#4fb8ff','#b98cff','#5fd38a','#ff6f91','#ffd84d','#3fd0c9','#ff8a5c'];
-const BANDS = [[2,'#ffffff'],[5,'#b9f3c4'],[10,'#2fc45c'],[20,'#a9d93b'],[30,'#f5e03a'],[40,'#ff9a1f'],[50,'#f2522a'],[Infinity,'#d6141a']];
+const BANDS = [[2,'#ffffff'],[5,'#b9f3c4'],[10,'#2fc45c'],[20,'#f5e03a'],[30,'#ff9a1f'],[40,'#f2522a'],[Infinity,'#d6141a']];
 const PERIODS = [['today','bugün'],['yday','dün'],['w1','1 hafta'],['w2','2 hafta'],['w3','3 hafta'],['m1','1 ay'],['all','toplam']];
 let PERIOD = (() => { try { return localStorage.getItem('kcs-p') || 'w1'; } catch { return 'w1'; } })();
 const LINE = ['#fde9a6','#ec5e3c','#b8326e','#f9a03b','#9b5de5','#e8d5ff','#ff8fab','#7ae0c3'];
