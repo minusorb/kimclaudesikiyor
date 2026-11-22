@@ -56,6 +56,13 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .cells{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
 .cells i{display:block;height:clamp(9px,1.05vw,15px);border-radius:2px;background:var(--t0)}
 .cells i:hover{outline:1px solid var(--ink);outline-offset:1px}
+.cal{display:grid;grid-template-columns:28px auto;gap:4px 8px;justify-content:start}
+.cal .ml{grid-column:2;display:grid;gap:3px;font-size:10px;color:var(--faint);height:12px;white-space:nowrap}
+.cal .dls{display:grid;grid-template-rows:repeat(7,1fr);gap:3px;font-size:10px;color:var(--faint);text-align:right;line-height:1;align-items:center}
+.weeks{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:3px}
+.weeks i{display:block;aspect-ratio:1;border-radius:2px;background:var(--t0)}
+.weeks i.x{background:none;pointer-events:none}
+.weeks i:not(.x):hover{outline:1px solid var(--ink);outline-offset:1px}
 .hours{grid-column:2;display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums;padding-top:2px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .big{font:500 28px/1 var(--display);letter-spacing:-.01em}
@@ -92,7 +99,7 @@ section.chart{padding:clamp(40px,6vw,72px) 0 8px}
 .tip.show{opacity:1;transform:none}
 .tip span{color:var(--dim)}
 
-.totals{border-top:1px solid var(--line);margin-top:clamp(40px,6vw,64px);padding:24px 0 0;font:400 clamp(18px,1.8vw,22px)/1.45 var(--display);color:var(--dim);max-width:44ch}
+.totals{border-top:1px solid var(--line);margin-top:clamp(40px,6vw,64px);padding:24px 0 clamp(72px,10vw,120px);font:400 clamp(18px,1.8vw,22px)/1.45 var(--display);color:var(--dim);max-width:44ch}
 .totals b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
 footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:13px;padding:22px 0 40px}
 footer code{font-family:inherit;color:var(--dim)}
@@ -104,7 +111,7 @@ footer code{font-family:inherit;color:var(--dim)}
   .acct h2{grid-column:1/-1}
   .head{display:none}
   .row{grid-template-columns:34px 1fr auto;grid-template-areas:"r w n" "h h h" "m m c";gap:14px 16px}
-  .rank{grid-area:r}.who{grid-area:w}.heat{grid-area:h}.n7{grid-area:n}.usd{grid-area:c;align-self:end}.models{grid-area:m}
+  .rank{grid-area:r}.who{grid-area:w}.heat,.cal{grid-area:h}.n7{grid-area:n}.usd{grid-area:c;align-self:end}.models{grid-area:m}
 }
 @media (max-width:560px){
   header.top{flex-direction:column;align-items:flex-start}
@@ -145,7 +152,9 @@ footer code{font-family:inherit;color:var(--dim)}
 const REPO = 'minusorb/kimclaudesikiyor', ISSUE = 1;
 const $ = (s) => document.querySelector(s);
 const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
-const RAMP = ['#1a0b2e','#3d0f63','#76197e','#b8326e','#ec5e3c','#f9a03b','#fde9a6'];
+const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const HEADS = {today:'Bugün, saat saat', yday:'Dün, saat saat', w1:'Son 7 gün, saat saat', w2:'Son 14 gün, gün gün', w3:'Son 21 gün, gün gün', m1:'Son 30 gün, gün gün', all:'Tüm zaman, gün gün'};
+const RAMP = ['#ffffff','#a6f0b4','#2fc45c','#f2e03a','#ffae1f','#f5521f','#d6141a'];
 const PERIODS = [['today','bugün'],['yday','dün'],['w1','1 hafta'],['w2','2 hafta'],['w3','3 hafta'],['m1','1 ay'],['all','toplam']];
 let PERIOD = (() => { try { return localStorage.getItem('kcs-p') || 'w1'; } catch { return 'w1'; } })();
 const LINE = ['#fde9a6','#ec5e3c','#b8326e','#f9a03b','#9b5de5','#e8d5ff','#ff8fab','#7ae0c3'];
@@ -201,6 +210,47 @@ function hourModels(p, di, h){
   const x = (p.hm || []).find(r => r[0] === di && r[1] === h);
   return x ? Object.entries(x[2]).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ') : '';
 }
+const dUTC = (s) => new Date(s + 'T00:00:00Z');
+const dKey = (d) => d.toISOString().slice(0, 10);
+const dAdd = (s, n) => { const d = dUTC(s); d.setUTCDate(d.getUTCDate() + n); return dKey(d); };
+const mList = (m) => Object.entries(m || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ');
+function dayMap(p){
+  const m = {};
+  (p.days || []).forEach(x => m[x.d] = [x.tok, x.m]);
+  (p.cal || []).forEach(x => m[x[0]] = [x[1], x[2]]);
+  return m;
+}
+function calRange(people){
+  const end = people.map(p => (p.days || []).slice(-1)[0]?.d).filter(Boolean).sort().pop() || dKey(new Date());
+  if (PERIOD !== 'all') return [dAdd(end, 1 - ({w2:14,w3:21,m1:30})[PERIOD]), end];
+  const first = people.flatMap(p => Object.entries(dayMap(p)).filter(e => e[1][0] > 0).map(e => e[0])).sort()[0] || end;
+  const min = dAdd(end, -7 * 20 + 1);
+  return [first < min ? first : min, end];
+}
+function hourHeat(p, max){
+  const days = p.days.slice(-7);
+  const idx = PERIOD === 'today' ? [6] : PERIOD === 'yday' ? [5] : [0,1,2,3,4,5,6];
+  const rows = idx.map(di => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${p.hours[di].map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
+  return `<div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>`;
+}
+function calHeat(p, max, start, end){
+  const m = dayMap(p);
+  const lead = (dUTC(start).getUTCDay() + 6) % 7;
+  const first = dAdd(start, -lead);
+  const n = Math.round((dUTC(end) - dUTC(first)) / 864e5) + 1;
+  const weeks = Math.ceil(n / 7);
+  let cells = '', months = '', last = -1;
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = dAdd(first, i);
+    if (i % 7 === 0) { const mo = +d.slice(5, 7) - 1; months += `<span>${mo !== last ? MONTHS[mo] : ''}</span>`; last = mo; }
+    if (d < start || d > end) { cells += '<i class="x"></i>'; continue; }
+    const [v, mm] = m[d] || [0, {}];
+    const dt = dUTC(d);
+    cells += `<i style="background:${heatColor(v, max)}" data-t="${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]} ${DAYS[dt.getUTCDay()]}" data-v="${v}" data-m="${esc(mList(mm))}"></i>`;
+  }
+  const size = `repeat(${weeks}, minmax(0, ${weeks > 30 ? 12 : weeks > 8 ? 16 : 20}px))`;
+  return `<div class="cal"><div class="ml" style="grid-template-columns:${size}">${months}</div><div class="dls"><span>Pzt</span><span></span><span>Çar</span><span></span><span>Cum</span><span></span><span>Paz</span></div><div class="weeks" style="grid-template-columns:${size}">${cells}</div></div>`;
+}
 function fav(p){
   const e = Object.entries((p.all && p.all.m) || {}).sort((a, b) => b[1] - a[1])[0];
   return e ? e[0] : p.model;
@@ -246,25 +296,25 @@ function render(people){
   }
   account(people);
   const groupTok = people.reduce((n, x) => n + sumOf(x, PERIOD).tok, 0);
-  const max = Math.max(1, ...people.flatMap(p => p.hours.flat()));
+  const hourly = ['today','yday','w1'].includes(PERIOD);
+  const [cs, ce] = hourly ? [] : calRange(people);
+  const max = hourly ? Math.max(1, ...people.flatMap(p => p.hours.flat())) : Math.max(1, ...people.flatMap(p => Object.entries(dayMap(p)).filter(e => e[0] >= cs && e[0] <= ce).map(e => e[1][0])));
   const anyUse = people.some(p => p.all.tok > 0);
-  let html = `<div class="head"><span></span><span>Kim</span><span>Son 7 gün, saat saat</span><span>${perName()} token</span><span>Tahmini</span><span>Modeller</span></div>`;
+  let html = `<div class="head"><span></span><span>Kim</span><span>${HEADS[PERIOD]}</span><span>${perName()} token</span><span>Tahmini</span><span>Modeller</span></div>`;
   people.forEach((p, i) => {
-    const days = p.days.slice(-7);
     const stale = p.planAt && Date.now() - p.planAt > 6*36e5;
     const sp = sumOf(p, PERIOD);
-    const rows = p.hours.map((r, di) => `<span class="dl">${dayLabel(days[di].d)}</span><div class="cells">${r.map((v,h) => `<i style="background:${heatColor(v,max)}" data-t="${esc(dayLabel(days[di].d))} ${String(h).padStart(2,'0')}:00" data-v="${v}" data-m="${esc(hourModels(p, di, h))}"></i>`).join('')}</div>`).join('');
     html += `<article class="row${i===0?' first':''}">
       <div class="rank">${i+1}</div>
       <div class="who"><div class="name">${esc(p.name)}</div><div class="host">${esc(p.host)} · güncellendi ${ago(p.updated)}${fav(p) ? `<br>favori <span class="model">${esc(fav(p))}</span>` : ''}</div></div>
-      <div class="heat">${rows}<div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></div>
+      ${hourly ? hourHeat(p, max) : calHeat(p, max, cs, ce)}
       <div class="num n7"><div class="big">${fmt(sp.tok)}</div><div class="sub">${groupTok ? 'payı %' + Math.round(100 * sp.tok / groupTok) : 'payı —'} · ${PERIOD === 'today' ? 'toplam ' + fmt(p.all.tok) : 'bugün ' + fmt(p.today.tok)}</div></div>
       <div class="num usd"><div class="big" style="font-size:22px">${usd(sp.usd)}</div><div class="sub">${PERIOD === 'all' ? perName() : 'toplam ' + usd(p.all.usd)}</div></div>
       <div class="models">${models(sp.m, sp.tok)}</div>
     </article>`;
   });
   board.innerHTML = html;
-  board.querySelectorAll('.cells i').forEach(c => {
+  board.querySelectorAll('.cells i, .weeks i:not(.x)').forEach(c => {
     c.addEventListener('mousemove', e => showTip(e, `${c.dataset.t} <span>·</span> ${fmt(+c.dataset.v)} token${c.dataset.m ? '<br><span>' + c.dataset.m + '</span>' : ''}`));
     c.addEventListener('mouseleave', hideTip);
   });
@@ -299,7 +349,7 @@ function render(people){
   const hot = today.indexOf(Math.max(...today));
   const mm = {}; people.forEach(p => { for (const [k, v] of Object.entries(sumOf(p, PERIOD).m)) mm[k] = (mm[k] || 0) + v; });
   const ml = Object.entries(mm).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${fmt(v)}`).join(', ');
-  $('#totals').innerHTML = sumTok ? `${perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
+  $('#totals').innerHTML = sumTok ? `${PERIOD === 'all' ? 'Tüm zaman' : perName()}: toplam <b>${fmt(sumTok)} token</b>${ml ? ` (${ml})` : ''}, API fiyatıyla <b>${usd(sumUsd)}</b>.${Math.max(...today) ? ` Bugünün en yoğun saati <b>${String(hot).padStart(2,'0')}:00</b>.` : ''}` : `${perName()}: henüz kullanım yok.`;
   $('#totals').hidden = false;
 }
 
