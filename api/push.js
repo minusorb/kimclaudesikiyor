@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     }
     if (b.op === 'list') {
       const users = await all('u/');
-      return res.status(200).json(users.map((u) => ({ id: u.id, name: u.data && u.data.name, at: u.at, flags: u.flags || 0, last: u.lastReject || null, banned: !!u.banned })));
+      return res.status(200).json(users.map((u) => ({ id: u.id, name: u.data && u.data.name, nick: (u.data && u.data.nick) || null, alias: u.alias || null, at: u.at, flags: u.flags || 0, last: u.lastReject || null, banned: !!u.banned })));
     }
     if (b.op === 'ban' || b.op === 'unban') {
       const u = ID.test(b.id) && (await read(`u/${b.id}.json`));
@@ -29,6 +29,13 @@ module.exports = async (req, res) => {
       u.banned = b.op === 'ban';
       await write(`u/${b.id}.json`, u);
       return res.status(200).json({ ok: true });
+    }
+    if (b.op === 'alias') {
+      const u = ID.test(b.id) && (await read(`u/${b.id}.json`));
+      if (!u) return out(res, 404, 'id');
+      u.alias = String(b.alias || '').trim().slice(0, 30) || undefined;
+      await write(`u/${b.id}.json`, u);
+      return res.status(200).json({ ok: true, alias: u.alias || null });
     }
     if (b.op === 'delete' && ID.test(b.id)) {
       await del(`u/${b.id}.json`);
@@ -65,6 +72,7 @@ module.exports = async (req, res) => {
     await write(`u/${id}.json`, u);
     return out(res, 422, why);
   }
+  delete data.user; delete data.host; delete data.projects;   // never stored: computer, account and folder names
   u.data = data; u.at = now;
   await write(`u/${id}.json`, u);
   res.status(200).json({ ok: true });

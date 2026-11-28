@@ -29,7 +29,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 function check(d, prev, now) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return 'shape';
   if (JSON.stringify(d).length > 90000) return 'size';
-  if (!str(d.name, 60) || !str(d.user, 60) || !str(d.host, 80) || !str(d.model, 40) || !str(d.plan, 40)) return 'strings';
+  if (!str(d.name, 60) || !str(d.nick, 30) || !str(d.user, 60) || !str(d.host, 80) || !str(d.model, 40) || !str(d.plan, 40)) return 'strings';
   if (!num(d.updated, 9e15) || d.updated < now - 15 * 60e3 || d.updated > now + 5 * 60e3) return 'clock';
   if (!num(d.since, now + 6e4)) return 'since';
   if (d.all && d.all.tok > ((now - d.since) / 1000) * 6e4 + 2e7) return 'faster-than-possible';
